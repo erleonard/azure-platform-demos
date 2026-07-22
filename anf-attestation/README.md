@@ -30,7 +30,6 @@ anf-attestation/
 │   │   ├── log-analytics.bicep        ← Log Analytics workspace
 │   │   ├── virtual-network.bicep      ← VNet + subnets
 │   │   ├── netapp-account.bicep       ← ANF account + pool + volume
-│   │   ├── policy-exemptions.bicep    ← SLZ DDoS Modify waiver (RG-scoped)
 │   │   ├── bastion.bicep              ← Azure Bastion (private RDP/SSH)
 │   │   ├── windows-server.bicep       ← Win2019 source FS + 100-file seed + robocopy/NFSv3 migrate.ps1
 │   │   └── diagnostic-settings.bicep  ← ANF metrics → Log Analytics

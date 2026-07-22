@@ -60,9 +60,6 @@ param adminPassword string = ''
 @description('Size for the demo VMs (Gen2-capable).')
 param vmSize string = 'Standard_D2s_v5'
 
-@description('Resource ID of the Enforce-Sov-L1-Regions (allowed locations) policy assignment. Assigned at the "alz" management group; a subscription-scoped waiver lets the demo deploy outside the SLZ default regions (canadacentral/canadaeast).')
-param sovL1RegionsPolicyAssignmentId string = '/providers/Microsoft.Management/managementGroups/alz/providers/Microsoft.Authorization/policyAssignments/Enforce-Sov-L1-Regions'
-
 // ---------------------------------------------------------------------------
 // Resource group
 // ---------------------------------------------------------------------------
@@ -71,38 +68,12 @@ param sovL1RegionsPolicyAssignmentId string = '/providers/Microsoft.Management/m
 // resolvable at the start of deployment; a module output cannot — BCP120).
 var resourceGroupName = '${prefix}-rg'
 
-// Subscription-scoped waiver for the Sovereignty Baseline – Global (L1)
-// allowed-locations policy (assigned at the "alz" MG with
-// listOfAllowedLocations = canadacentral/canadaeast). This must be at
-// subscription scope because the resource-group creation itself is evaluated
-// at subscription scope — an RG-scoped exemption cannot cover it.
-resource sovL1RegionsExemption 'Microsoft.Authorization/policyExemptions@2022-07-01-preview' = {
-  name: 'exempt-sov-l1-regions'
-  properties: {
-    policyAssignmentId: sovL1RegionsPolicyAssignmentId
-    exemptionCategory: 'Waiver'
-    displayName: 'Waive Sovereignty L1 allowed-locations for the attestation demo'
-    description: 'Allows the demo to deploy in ${location}, outside the SLZ default allowed regions (canadacentral/canadaeast).'
-  }
-}
-
 module rg './modules/resource-group.bicep' = {
   name: 'rgDeployment'
-  dependsOn: [sovL1RegionsExemption]
   params: {
     resourceGroupName: resourceGroupName
     location: location
   }
-}
-
-// ---------------------------------------------------------------------------
-// Policy exemptions (SLZ guardrail waivers scoped to the demo RG)
-// ---------------------------------------------------------------------------
-
-module policyExemptions './modules/policy-exemptions.bicep' = {
-  name: 'policyExemptionsDeployment'
-  scope: resourceGroup(resourceGroupName)
-  dependsOn: [rg]
 }
 
 // ---------------------------------------------------------------------------
@@ -126,7 +97,7 @@ module logAnalytics './modules/log-analytics.bicep' = {
 module vnet './modules/virtual-network.bicep' = {
   name: 'vnetDeployment'
   scope: resourceGroup(resourceGroupName)
-  dependsOn: [rg, policyExemptions]
+  dependsOn: [rg]
   params: {
     prefix: prefix
     location: location
