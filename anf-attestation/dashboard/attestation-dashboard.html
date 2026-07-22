@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Attestation Dashboard — Windows Server → Azure NetApp Files</title>
+<script>
+  // Clawpilot theme detection — must run before other JS.
+  (() => {
+    const param = new URLSearchParams(window.location.search).get("scoutTheme");
+    const theme =
+      param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
+<style>
+:root {
+  color-scheme: light;
+  --cp-bg: #f7f4ef;
+  --cp-bg-elevated: #fcfbf8;
+  --cp-surface: #ffffff;
+  --cp-surface-soft: #f5f5f5;
+  --cp-border: #dedede;
+  --cp-border-strong: #919191;
+  --cp-text: #242424;
+  --cp-text-muted: #5c5c5c;
+  --cp-text-soft: #6f6f6f;
+  --cp-accent: #b11f4b;
+  --cp-accent-hover: #9a1a41;
+  --cp-accent-soft: rgba(177, 31, 75, 0.08);
+  --cp-accent-fg: #ffffff;
+  --cp-success: #16a34a;
+  --cp-danger: #dc2626;
+  --cp-warning: #f59e0b;
+  --cp-link: #0078d4;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+  --cp-overlay: rgba(255, 255, 255, 0.8);
+  --cp-panel: rgba(255, 255, 255, 0.86);
+  --cp-panel-strong: rgba(255, 255, 255, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.55);
+  --cp-highlight: rgba(177, 31, 75, 0.12);
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --cp-bg: #3d3b3a;
+  --cp-bg-elevated: #343231;
+  --cp-surface: #292929;
+  --cp-surface-soft: #2e2e2e;
+  --cp-border: #474747;
+  --cp-border-strong: #5f5f5f;
+  --cp-text: #dedede;
+  --cp-text-muted: #919191;
+  --cp-text-soft: #b0b0b0;
+  --cp-accent: #fd8ea1;
+  --cp-accent-hover: #fb7b91;
+  --cp-accent-soft: rgba(253, 142, 161, 0.14);
+  --cp-accent-fg: #1a1a1a;
+  --cp-success: #4ade80;
+  --cp-danger: #f87171;
+  --cp-warning: #fbbf24;
+  --cp-link: #4da6ff;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+  --cp-overlay: rgba(41, 41, 41, 0.88);
+  --cp-panel: rgba(41, 41, 41, 0.72);
+  --cp-panel-strong: rgba(41, 41, 41, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.04);
+  --cp-highlight: rgba(253, 142, 161, 0.12);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--cp-bg);
+  color: var(--cp-text);
+  font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 1.5;
+  padding: 28px clamp(16px, 4vw, 48px) 64px;
+}
+h1, h2, h3 { margin: 0; font-weight: 650; }
+code, .mono { font-family: Consolas, "Courier New", Courier, monospace; }
+
+header.top { max-width: 1200px; margin: 0 auto 20px; }
+.title-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.title-row h1 { font-size: 1.5rem; }
+.subtitle { color: var(--cp-text-muted); margin-top: 4px; font-size: 0.95rem; }
+.flow {
+  display: inline-flex; align-items: center; gap: 8px;
+  color: var(--cp-text-soft); font-size: 0.9rem; margin-top: 10px; flex-wrap: wrap;
+}
+.chip {
+  border: 1px solid var(--cp-border); border-radius: 0.625rem;
+  padding: 3px 10px; background: var(--cp-surface); font-size: 0.85rem;
+}
+.chip.arrow { border: none; background: none; color: var(--cp-accent); font-weight: 700; }
+
+.wrap { max-width: 1200px; margin: 0 auto; }
+
+.toolbar {
+  display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  margin: 16px 0 20px;
+}
+.btn {
+  border: 1px solid var(--cp-accent); background: var(--cp-accent); color: var(--cp-accent-fg);
+  border-radius: 0.625rem; padding: 9px 16px; font-size: 0.9rem; cursor: pointer;
+  font-family: inherit; font-weight: 600;
+}
+.btn:hover { background: var(--cp-accent-hover); border-color: var(--cp-accent-hover); }
+.btn.secondary { background: var(--cp-surface); color: var(--cp-text); border-color: var(--cp-border-strong); }
+input[type="search"], select {
+  border: 1px solid var(--cp-border-strong); background: var(--cp-surface); color: var(--cp-text);
+  border-radius: 0.625rem; padding: 8px 12px; font-size: 0.9rem; font-family: inherit;
+}
+input[type="search"] { min-width: 220px; flex: 1; }
+
+/* Drop zone */
+#drop {
+  border: 2px dashed var(--cp-border-strong); border-radius: 16px;
+  background: var(--cp-bg-elevated); padding: 48px 24px; text-align: center;
+  color: var(--cp-text-muted); transition: border-color .15s, background .15s;
+}
+#drop.drag { border-color: var(--cp-accent); background: var(--cp-accent-soft); }
+#drop h3 { color: var(--cp-text); font-size: 1.1rem; margin-bottom: 8px; }
+#drop p { margin: 6px 0; }
+#drop .hint { font-size: 0.85rem; }
+
+/* Summary cards */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.card {
+  background: var(--cp-surface); border: 1px solid var(--cp-border); border-radius: 16px;
+  padding: 16px 18px; box-shadow: 0 0 2px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.14);
+}
+.card .label { color: var(--cp-text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: .04em; }
+.card .value { font-size: 1.9rem; font-weight: 700; margin-top: 4px; }
+.card .value.ok { color: var(--cp-success); }
+.card .value.bad { color: var(--cp-danger); }
+
+/* Before / After panels */
+.beforeafter { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 22px; }
+@media (max-width: 720px) { .beforeafter { grid-template-columns: 1fr; } }
+.panel {
+  background: var(--cp-surface); border: 1px solid var(--cp-border); border-radius: 16px; padding: 18px;
+  box-shadow: 0 0 2px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.14);
+}
+.panel h3 { font-size: 0.95rem; display: flex; align-items: center; gap: 8px; }
+.panel .tag { font-size: 0.72rem; font-weight: 700; letter-spacing: .06em; padding: 2px 8px; border-radius: 999px; }
+.tag.before { background: var(--cp-accent-soft); color: var(--cp-accent); }
+.tag.after { background: rgba(22,163,74,0.12); color: var(--cp-success); }
+.panel dl { margin: 12px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 0.9rem; }
+.panel dt { color: var(--cp-text-muted); }
+.panel dd { margin: 0; text-align: right; }
+
+/* Table */
+.table-wrap { background: var(--cp-surface); border: 1px solid var(--cp-border); border-radius: 16px; overflow: hidden;
+  box-shadow: 0 0 2px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.14); }
+table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--cp-border); white-space: nowrap; }
+th { background: var(--cp-surface-soft); color: var(--cp-text-muted); font-weight: 600; position: sticky; top: 0;
+  text-transform: uppercase; font-size: 0.72rem; letter-spacing: .04em; cursor: pointer; user-select: none; }
+tbody tr:hover { background: var(--cp-accent-soft); }
+td.hash { font-family: Consolas, "Courier New", Courier, monospace; font-size: 0.8rem; color: var(--cp-text-soft); }
+td.match { color: var(--cp-success); }
+.badge { font-size: 0.72rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+.badge.VERIFIED { background: rgba(22,163,74,0.14); color: var(--cp-success); }
+.badge.MISMATCH { background: rgba(220,38,38,0.14); color: var(--cp-danger); }
+.eq { color: var(--cp-success); font-weight: 700; }
+.neq { color: var(--cp-danger); font-weight: 700; }
+.footer { color: var(--cp-text-soft); font-size: 0.82rem; margin-top: 16px; text-align: center; }
+.hidden { display: none !important; }
+.err { color: var(--cp-danger); margin-top: 12px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="title-row">
+    <h1>Attestation — Migration Verification</h1>
+  </div>
+  <div class="subtitle">SHA-256 integrity + NTFS metadata evidence for the Windows&nbsp;Server&nbsp;→&nbsp;Azure&nbsp;NetApp&nbsp;Files migration.</div>
+  <div class="flow">
+    <span class="chip">CORP-FS01 · C:\LegalData (NTFS)</span>
+    <span class="chip arrow">→ robocopy →</span>
+    <span class="chip">Azure NetApp Files · NFSv3 (Z:\LegalData)</span>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="toolbar">
+    <button class="btn" id="pickBtn">Load ledger / manifest…</button>
+    <button class="btn secondary" id="sampleBtn">Load sample data</button>
+    <input type="file" id="file" accept=".json,.csv" class="hidden" />
+    <input type="search" id="search" class="hidden" placeholder="Filter by file name, owner, hash…" />
+    <select id="statusFilter" class="hidden">
+      <option value="ALL">All statuses</option>
+      <option value="VERIFIED">Verified only</option>
+      <option value="MISMATCH">Mismatches only</option>
+    </select>
+  </div>
+
+  <div id="drop">
+    <h3>Drop <code>migration-manifest.json</code> or <code>migration-ledger.csv</code> here</h3>
+    <p>…or click <strong>Load ledger / manifest…</strong> above.</p>
+    <p class="hint">Everything runs locally in your browser — no data leaves this page.</p>
+    <div id="err" class="err"></div>
+  </div>
+
+  <section id="report" class="hidden">
+    <div class="cards" id="cards"></div>
+
+    <div class="beforeafter">
+      <div class="panel">
+        <h3><span class="tag before">BEFORE</span> Windows Server source</h3>
+        <dl id="beforeDl"></dl>
+      </div>
+      <div class="panel">
+        <h3><span class="tag after">AFTER</span> Azure NetApp Files (NFSv3)</h3>
+        <dl id="afterDl"></dl>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th data-k="file">File</th>
+            <th data-k="size_bytes">Size</th>
+            <th data-k="owner">Owner (before)</th>
+            <th data-k="modified_utc">Modified (before)</th>
+            <th data-k="sha256_source">Source SHA-256</th>
+            <th data-k="sha256_dest">ANF SHA-256</th>
+            <th data-k="status">Status</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="footer" id="footer"></div>
+  </section>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let rows = [];
+let sortKey = "file", sortDir = 1;
+
+// ---- Parsing -------------------------------------------------------------
+function parseCSV(text) {
+  const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").filter(l => l.length);
+  if (!lines.length) return [];
+  const parseLine = (line) => {
+    const out = []; let cur = ""; let q = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (q) {
+        if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+        else if (c === '"') { q = false; }
+        else cur += c;
+      } else {
+        if (c === '"') q = true;
+        else if (c === ",") { out.push(cur); cur = ""; }
+        else cur += c;
+      }
+    }
+    out.push(cur);
+    return out;
+  };
+  const headers = parseLine(lines[0]);
+  return lines.slice(1).map(l => {
+    const cells = parseLine(l); const o = {};
+    headers.forEach((h, i) => o[h.trim()] = (cells[i] ?? "").trim());
+    return o;
+  });
+}
+
+function normalize(data) {
+  return data.map(r => ({
+    file: r.file ?? "",
+    size_bytes: Number(r.size_bytes ?? 0),
+    owner: r.owner ?? "",
+    acl_sddl: r.acl_sddl ?? "",
+    attributes: r.attributes ?? "",
+    created_utc: r.created_utc ?? "",
+    modified_utc: r.modified_utc ?? "",
+    sha256_source: (r.sha256_source ?? "").toUpperCase(),
+    sha256_dest: (r.sha256_dest ?? "").toUpperCase(),
+    status: (r.status ?? "").toUpperCase()
+  }));
+}
+
+function loadText(name, text) {
+  $("err").textContent = "";
+  try {
+    let data;
+    if (name.toLowerCase().endsWith(".json") || text.trim().startsWith("[") || text.trim().startsWith("{")) {
+      const j = JSON.parse(text);
+      data = Array.isArray(j) ? j : [j];
+    } else {
+      data = parseCSV(text);
+    }
+    rows = normalize(data);
+    if (!rows.length) throw new Error("No records found in file.");
+    render();
+  } catch (e) {
+    $("err").textContent = "Could not parse file: " + e.message;
+  }
+}
+
+// ---- Rendering -----------------------------------------------------------
+function fmtBytes(n) {
+  if (!n) return "0 B";
+  const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0; let v = n;
+  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+  return (i === 0 ? v : v.toFixed(1)) + " " + u[i];
+}
+function fmtDate(s) { if (!s) return "—"; const d = new Date(s); return isNaN(d) ? s : d.toISOString().slice(0, 19).replace("T", " ") + "Z"; }
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+function stats() {
+  const total = rows.length;
+  const verified = rows.filter(r => r.status === "VERIFIED").length;
+  const mismatch = total - verified;
+  const bytes = rows.reduce((a, r) => a + (r.size_bytes || 0), 0);
+  const owners = new Set(rows.map(r => r.owner).filter(Boolean));
+  return { total, verified, mismatch, bytes, owners: owners.size };
+}
+
+function render() {
+  $("drop").classList.add("hidden");
+  $("report").classList.remove("hidden");
+  ["search", "statusFilter"].forEach(id => $(id).classList.remove("hidden"));
+
+  const s = stats();
+  const pct = s.total ? Math.round((s.verified / s.total) * 100) : 0;
+  $("cards").innerHTML = `
+    <div class="card"><div class="label">Files migrated</div><div class="value">${s.total}</div></div>
+    <div class="card"><div class="label">Verified (SHA-256)</div><div class="value ok">${s.verified}</div></div>
+    <div class="card"><div class="label">Mismatches</div><div class="value ${s.mismatch ? "bad" : "ok"}">${s.mismatch}</div></div>
+    <div class="card"><div class="label">Integrity</div><div class="value ${pct === 100 ? "ok" : "bad"}">${pct}%</div></div>
+    <div class="card"><div class="label">Total size</div><div class="value">${fmtBytes(s.bytes)}</div></div>`;
+
+  $("beforeDl").innerHTML = `
+    <dt>Location</dt><dd>C:\\LegalData</dd>
+    <dt>Filesystem</dt><dd>NTFS</dd>
+    <dt>Files</dt><dd>${s.total}</dd>
+    <dt>Distinct owners</dt><dd>${s.owners}</dd>
+    <dt>ACLs captured</dt><dd>${rows.filter(r => r.acl_sddl).length}</dd>`;
+  $("afterDl").innerHTML = `
+    <dt>Location</dt><dd>Z:\\LegalData</dd>
+    <dt>Protocol</dt><dd>NFSv3</dd>
+    <dt>Verified</dt><dd>${s.verified} / ${s.total}</dd>
+    <dt>Mismatches</dt><dd>${s.mismatch}</dd>
+    <dt>Metadata on disk</dt><dd>content + timestamps</dd>`;
+
+  renderTable();
+}
+
+function renderTable() {
+  const q = $("search").value.toLowerCase();
+  const sf = $("statusFilter").value;
+  let view = rows.filter(r => {
+    if (sf !== "ALL" && r.status !== sf) return false;
+    if (!q) return true;
+    return (r.file + " " + r.owner + " " + r.sha256_source + " " + r.sha256_dest).toLowerCase().includes(q);
+  });
+  view.sort((a, b) => {
+    let x = a[sortKey], y = b[sortKey];
+    if (sortKey === "size_bytes") { x = +x; y = +y; }
+    return (x < y ? -1 : x > y ? 1 : 0) * sortDir;
+  });
+  const shortHash = (h) => h ? `<span title="${esc(h)}">${esc(h.slice(0, 12))}…</span>` : "—";
+  $("tbody").innerHTML = view.map(r => {
+    const eq = r.sha256_source && r.sha256_source === r.sha256_dest;
+    return `<tr>
+      <td>${esc(r.file)}</td>
+      <td>${fmtBytes(r.size_bytes)}</td>
+      <td title="${esc(r.acl_sddl)}">${esc(r.owner) || "—"}</td>
+      <td>${fmtDate(r.modified_utc)}</td>
+      <td class="hash">${shortHash(r.sha256_source)}</td>
+      <td class="hash ${eq ? "match" : ""}">${r.sha256_dest === "MISSING" ? '<span class="neq">MISSING</span>' : shortHash(r.sha256_dest)}</td>
+      <td><span class="badge ${esc(r.status)}">${eq ? "✓ " : "✗ "}${esc(r.status)}</span></td>
+    </tr>`;
+  }).join("");
+  $("footer").textContent = `Showing ${view.length} of ${rows.length} files.`;
+}
+
+// ---- Events --------------------------------------------------------------
+$("pickBtn").onclick = () => $("file").click();
+$("file").onchange = (e) => { const f = e.target.files[0]; if (f) f.text().then(t => loadText(f.name, t)); };
+$("search").oninput = renderTable;
+$("statusFilter").onchange = renderTable;
+document.querySelectorAll("th[data-k]").forEach(th => th.onclick = () => {
+  const k = th.dataset.k;
+  if (sortKey === k) sortDir *= -1; else { sortKey = k; sortDir = 1; }
+  renderTable();
+});
+
+const drop = $("drop");
+["dragover", "dragenter"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("drag"); }));
+["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("drag"); }));
+drop.addEventListener("drop", e => { const f = e.dataTransfer.files[0]; if (f) f.text().then(t => loadText(f.name, t)); });
+
+// Sample data so the dashboard is explorable without a file.
+$("sampleBtn").onclick = () => {
+  const exts = ["pdf", "docx", "xlsx", "txt", "csv", "zip", "pptx", "eml", "tif", "rtf"];
+  const rnd = (n) => Math.floor(Math.random() * n);
+  const hex = (n) => Array.from({ length: n }, () => "0123456789ABCDEF"[rnd(16)]).join("");
+  const sample = Array.from({ length: 100 }, (_, i) => {
+    const h = hex(64);
+    const mismatch = i === 41; // one intentional demo mismatch
+    return {
+      file: `legal_${String(i + 1).padStart(3, "0")}.${exts[i % exts.length]}`,
+      size_bytes: 8192 + rnd(4_000_000),
+      owner: "BUILTIN\\Administrators",
+      acl_sddl: "O:BAG:SYD:AI(A;ID;0x1301bf;;;AU)(A;ID;FA;;;SY)(A;ID;FA;;;BA)(A;ID;0x1200a9;;;BU)",
+      attributes: "Archive",
+      created_utc: "2026-07-22T16:26:35Z",
+      modified_utc: "2026-07-22T16:26:35Z",
+      sha256_source: h,
+      sha256_dest: mismatch ? "MISSING" : h,
+      status: mismatch ? "MISMATCH" : "VERIFIED"
+    };
+  });
+  rows = normalize(sample);
+  render();
+};
+</script>
+</body>
+</html>
